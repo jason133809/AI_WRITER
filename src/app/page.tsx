@@ -8,7 +8,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 // 模型选项
 const models = [
   { value: 'deepseek/deepseek-r1-0528:free', label: 'DeepSeek R1 (免费)' },
-  { value: 'mistralai/mistral-7b-instruct:free', label: 'Mistral 7B (免费)' },
 ]
 
 // 语言选项
@@ -46,7 +45,7 @@ interface FormData {
 
 export default function Home() {
   const [formData, setFormData] = useState<FormData>({
-    model: 'deepseek/deepseek-r1-0528:free',
+    model: 'mistralai/mistral-7b-instruct:free',
     keywords: '',
     description: '',
     language: 'zh',
@@ -85,15 +84,25 @@ export default function Home() {
         }),
       })
 
+      const data = await response.json()
+      
       if (!response.ok) {
-        throw new Error('生成失败')
+        // 显示更详细的错误信息
+        const errorMsg = data.details || data.error || '生成失败'
+        if (errorMsg.includes('rate limited')) {
+          throw new Error('当前模型被限流，请尝试其他模型或稍后重试')
+        } else if (errorMsg.includes('API Error: 429')) {
+          throw new Error('请求过于频繁，请稍后重试')
+        } else {
+          throw new Error(errorMsg)
+        }
       }
 
-      const data = await response.json()
       setResult(data.content)
     } catch (error) {
       console.error('Error:', error)
-      alert('生成失败，请重试')
+      const errorMessage = error instanceof Error ? error.message : '生成失败，请重试'
+      alert(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -264,8 +273,7 @@ export default function Home() {
                   </div>
                   <Button
                     onClick={copyToClipboard}
-                    variant="outline"
-                    className="mt-4 w-full"
+                    className="mt-4 w-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                   >
                     复制到剪贴板
                   </Button>
